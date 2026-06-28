@@ -1,0 +1,126 @@
+<form class="daggerheart-item-piles-price-manager">
+  <style>
+    .daggerheart-item-piles-price-manager {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      height: 100%;
+      min-height: 0;
+      flex-wrap: nowrap;
+    }
+
+    .daggerheart-item-piles-price-manager .toolbar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+
+    .daggerheart-item-piles-price-manager .toolbar input.price-search {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 12rem;
+    }
+
+    .daggerheart-item-piles-price-manager .toolbar button.clear-search {
+      flex: 0 0 2.25rem;
+      width: 2.25rem;
+      min-width: 2.25rem;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .daggerheart-item-piles-price-manager .price-table-wrap {
+      flex: 1 1 auto;
+      min-height: 18rem;
+      overflow: auto;
+      border: 1px solid var(--color-border-light-tertiary);
+    }
+
+    .daggerheart-item-piles-price-manager table {
+      width: 100%;
+      margin: 0;
+    }
+
+    .daggerheart-item-piles-price-manager th {
+      position: sticky;
+      top: 0;
+      background: var(--color-bg);
+      z-index: 1;
+      text-align: left;
+    }
+
+    .daggerheart-item-piles-price-manager td,
+    .daggerheart-item-piles-price-manager th {
+      padding: 0.35rem 0.5rem;
+      vertical-align: top;
+    }
+
+    .daggerheart-item-piles-price-manager .dhp-notes {
+      color: var(--color-text-light-6);
+      font-size: 0.85em;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .daggerheart-item-piles-price-manager .price-cell {
+      white-space: nowrap;
+      width: 7rem;
+    }
+
+    .daggerheart-item-piles-price-manager input[type="number"] {
+      width: 8rem;
+    }
+
+    .daggerheart-item-piles-price-manager footer {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+  </style>
+
+  <p class="dhp-notes">
+    Showing {{entryCount}} bundled prices. Blank override fields use the bundled default. Saved overrides are stored in this world and survive module updates.
+  </p>
+
+  <div class="toolbar">
+    <input class="price-search" type="search" name="search" placeholder="Search items">
+    <button class="clear-search" type="button" data-action="clear-search" title="Clear search"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div class="price-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Default</th>
+          <th>Override</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each entries}}
+          <tr data-search="{{search}}">
+            <td>
+              <strong>{{name}}</strong>
+              <div class="dhp-notes">{{category}} {{tierLabel}}</div>
+            </td>
+            <td class="price-cell">{{price}} gp</td>
+            <td>
+              <input type="number" name="override--{{encodedKey}}" value="{{override}}" min="0" step="1" placeholder="{{price}}">
+            </td>
+          </tr>
+        {{/each}}
+        {{#unless entries.length}}
+          <tr>
+            <td colspan="3">No bundled prices loaded. Refresh Foundry and check the browser console for Daggerheart Item Piles errors.</td>
+          </tr>
+        {{/unless}}
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <button type="button" data-action="reset-overrides"><i class="fas fa-undo"></i> Clear Overrides</button>
+    <button type="submit"><i class="fas fa-save"></i> Save Prices</button>
+  </footer>
+</form>
