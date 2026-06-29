@@ -33,6 +33,7 @@ export function getItemPriceSync(item) {
 
 export function getDefaultPriceEntries() {
   const entries = [];
+  const categoryOrder = new Map(Object.keys(PRICE_DATA).map((category, index) => [category, index]));
 
   for (const [category, categoryData] of Object.entries(PRICE_DATA)) {
     for (const [name, data] of Object.entries(categoryData ?? {})) {
@@ -49,7 +50,7 @@ export function getDefaultPriceEntries() {
   }
 
   return entries.sort((left, right) => (
-    left.category.localeCompare(right.category)
+    (categoryOrder.get(left.category) ?? 999) - (categoryOrder.get(right.category) ?? 999)
     || (left.tier ?? 0) - (right.tier ?? 0)
     || left.name.localeCompare(right.name)
   ));

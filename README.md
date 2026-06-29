@@ -7,7 +7,8 @@ Foundry VTT module that adds Daggerheart support for Item Piles.
 - Registers Daggerheart item quantity support for Item Piles.
 - Adds D&D-style coin currencies: gp, sp, cp, and pp.
 - Uses bundled Daggerheart item prices for Item Piles merchants.
-- Adds a GM-only Price Manager for world-specific price overrides.
+- Adds a GM-only Price Manager with search, type filters, tier filters, and world-specific price overrides.
+- Adds an Item Piles Price button to Daggerheart item sheets so homebrew items can be priced after normal drag-and-drop workflows.
 - Blocks character-build items, such as ancestry, class, subclass, domain cards, and features, from player sell lists.
 
 ## Requirements
@@ -55,6 +56,16 @@ GM overrides are stored in the world database, not in module files:
 5. Search for an item, enter an override price, and save.
 
 Blank overrides use the bundled default price. World overrides should survive module updates.
+
+## Pricing Homebrew Items
+
+For custom world or compendium items:
+
+1. Open the item sheet.
+2. Click the tag icon in the sheet header.
+3. Enter the Item Piles value in gp and save.
+
+The value is stored on the item at `flags.daggerheart-item-piles.price`. Items dragged into Item Piles from the item directory, custom compendiums, or rolltable results should carry that value with them.
 
 ## Building A Handoff Zip
 

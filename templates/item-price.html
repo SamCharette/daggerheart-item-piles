@@ -1,0 +1,53 @@
+<form class="daggerheart-item-piles-item-price">
+  <style>
+    .daggerheart-item-piles-item-price {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .daggerheart-item-piles-item-price .price-summary {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .daggerheart-item-piles-item-price .dhp-notes {
+      color: var(--color-text-light-6);
+      font-size: 0.85em;
+      margin: 0;
+    }
+
+    .daggerheart-item-piles-item-price .form-row {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .daggerheart-item-piles-item-price input[type="number"] {
+      width: 100%;
+    }
+
+    .daggerheart-item-piles-item-price footer {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+  </style>
+
+  <div class="price-summary">
+    <strong>{{itemName}}</strong>
+    <p class="dhp-notes">Type: {{itemType}}</p>
+    {{#if hasDefaultPrice}}
+      <p class="dhp-notes">Bundled default: {{defaultPrice}} gp</p>
+    {{/if}}
+  </div>
+
+  <div class="form-row">
+    <label for="daggerheart-item-piles-price">Item Piles value</label>
+    <input id="daggerheart-item-piles-price" type="number" name="price" value="{{price}}" min="0" step="1" placeholder="{{defaultPrice}}" autofocus>
+    <p class="dhp-notes">Blank clears the custom value. Item Piles reads this as the item's gp price.</p>
+  </div>
+
+  <footer>
+    <button type="button" data-action="clear-price"><i class="fas fa-undo"></i> Clear</button>
+    <button type="submit"><i class="fas fa-save"></i> Save</button>
+  </footer>
+</form>

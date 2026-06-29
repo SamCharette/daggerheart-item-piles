@@ -30,6 +30,50 @@
       padding-right: 0;
     }
 
+    .daggerheart-item-piles-price-manager .filter-panel {
+      display: grid;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+
+    .daggerheart-item-piles-price-manager .filter-group {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .daggerheart-item-piles-price-manager .filter-label {
+      color: var(--color-text-light-6);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .daggerheart-item-piles-price-manager .filter-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .daggerheart-item-piles-price-manager .filter-buttons button {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 0;
+      margin: 0;
+      padding: 0.2rem 0.45rem;
+      line-height: 1.2;
+    }
+
+    .daggerheart-item-piles-price-manager .filter-buttons button.active {
+      box-shadow: 0 0 0 1px var(--color-border-highlight);
+      filter: brightness(1.08);
+    }
+
+    .daggerheart-item-piles-price-manager .filter-count {
+      color: var(--color-text-light-6);
+      font-size: 0.85em;
+    }
+
     .daggerheart-item-piles-price-manager .price-table-wrap {
       flex: 1 1 auto;
       min-height: 18rem;
@@ -80,13 +124,35 @@
   </style>
 
   <p class="dhp-notes">
-    Showing {{entryCount}} bundled prices. Blank override fields use the bundled default. Saved overrides are stored in this world and survive module updates.
+    Showing <span data-visible-count>{{entryCount}}</span> of {{entryCount}} bundled prices. Blank override fields use the bundled default. Saved overrides are stored in this world and survive module updates.
   </p>
 
   <div class="toolbar">
     <input class="price-search" type="search" name="search" placeholder="Search items">
     <button class="clear-search" type="button" data-action="clear-search" title="Clear search"><i class="fas fa-times"></i></button>
   </div>
+
+  <section class="filter-panel" aria-label="Price filters">
+    <div class="filter-group">
+      <div class="filter-label">Type</div>
+      <div class="filter-buttons">
+        <button type="button" class="active" data-filter-category="all">All <span class="filter-count">{{entryCount}}</span></button>
+        {{#each categoryOptions}}
+          <button type="button" data-filter-category="{{key}}">{{label}} <span class="filter-count">{{count}}</span></button>
+        {{/each}}
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-label">Tier</div>
+      <div class="filter-buttons">
+        <button type="button" class="active" data-filter-tier="all">All</button>
+        {{#each tierOptions}}
+          <button type="button" data-filter-tier="{{key}}">{{label}} <span class="filter-count">{{count}}</span></button>
+        {{/each}}
+      </div>
+    </div>
+  </section>
 
   <div class="price-table-wrap">
     <table>
@@ -99,7 +165,7 @@
       </thead>
       <tbody>
         {{#each entries}}
-          <tr data-search="{{search}}">
+          <tr data-category="{{categoryKey}}" data-tier="{{tierKey}}" data-search="{{search}}">
             <td>
               <strong>{{name}}</strong>
               <div class="dhp-notes">{{category}} {{tierLabel}}</div>
@@ -115,6 +181,11 @@
             <td colspan="3">No bundled prices loaded. Refresh Foundry and check the browser console for Daggerheart Item Piles errors.</td>
           </tr>
         {{/unless}}
+        {{#if entries.length}}
+          <tr data-filter-empty style="display: none;">
+            <td colspan="3">No prices match the current filters.</td>
+          </tr>
+        {{/if}}
       </tbody>
     </table>
   </div>
