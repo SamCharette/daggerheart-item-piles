@@ -1,6 +1,6 @@
 # Daggerheart Item Piles
 
-Private Foundry VTT module that adds Daggerheart support for Item Piles.
+Foundry VTT module that adds Daggerheart support for Item Piles.
 
 ## What It Does
 
@@ -16,20 +16,31 @@ Private Foundry VTT module that adds Daggerheart support for Item Piles.
 - Daggerheart system 2.4.1 or later
 - Item Piles 3.3.2 or later
 
-## Install From A Zip
+## Install
+
+In Foundry's **Install Module** screen, paste this manifest URL:
+
+```text
+https://raw.githubusercontent.com/SamCharette/daggerheart-item-piles/main/module.json
+```
+
+Then enable `Daggerheart Item Piles` in your Daggerheart world.
+
+## Manual Zip Install
 
 1. Stop Foundry.
-2. Unzip this module into the Foundry user data modules folder.
-3. Confirm the module file is at:
+2. Download the latest release ZIP from GitHub.
+3. Unzip this module into the Foundry user data modules folder.
+4. Confirm the module file is at:
 
    ```text
    FoundryVTT/Data/modules/daggerheart-item-piles/module.json
    ```
 
-4. Start Foundry.
-5. Open the Daggerheart world as GM.
-6. Enable `Daggerheart Item Piles` in Manage Modules.
-7. Refresh the browser once after enabling.
+5. Start Foundry.
+6. Open the Daggerheart world as GM.
+7. Enable `Daggerheart Item Piles` in Manage Modules.
+8. Refresh the browser once after enabling.
 
 ## Updating Prices
 
