@@ -100,10 +100,12 @@ export function getItemRegistryIdentity(item) {
   };
 }
 
-export function applyRegistryDataToItemData(itemData) {
+export function applyRegistryDataToItemData(itemData, options = {}) {
   if (!itemData) return itemData;
   if (itemData.item) {
-    applyRegistryDataToItemData(itemData.item);
+    applyRegistryDataToItemData(itemData.item, {
+      existingQuantity: itemData.quantity
+    });
     const quantity = getProperty(itemData.item, ITEM_QUANTITY_PATH);
     if (Number.isFinite(Number(quantity))) itemData.quantity = Number(quantity);
     return itemData;
@@ -116,9 +118,14 @@ export function applyRegistryDataToItemData(itemData) {
     setProperty(itemData, SOURCE_UUID_FLAG_PATH, identity.sourceUuid);
   }
 
-  const quantity = Number(entry?.quantity);
+  const existingQuantity = Number(options.existingQuantity ?? getProperty(itemData, ITEM_QUANTITY_PATH));
+  const registryQuantity = Number(entry?.quantity);
+  const quantity = Number.isFinite(existingQuantity) && existingQuantity > 1
+    ? existingQuantity
+    : registryQuantity;
+
   if (Number.isFinite(quantity) && quantity > 0) {
-    setProperty(itemData, ITEM_QUANTITY_PATH, quantity);
+    setProperty(itemData, ITEM_QUANTITY_PATH, Math.floor(quantity));
   }
 
   return itemData;
