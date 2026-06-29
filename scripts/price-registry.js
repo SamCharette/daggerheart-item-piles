@@ -48,6 +48,12 @@ export function findPriceRegistryEntry(item) {
     if (entry) return entry;
   }
 
+  if (identity.fallbackKey) {
+    const entry = Object.values(registry.entries)
+      .find((candidate) => candidate.fallbackKey === identity.fallbackKey);
+    if (entry) return entry;
+  }
+
   return null;
 }
 

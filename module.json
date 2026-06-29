@@ -2,9 +2,9 @@
   "id": "daggerheart-item-piles",
   "title": "Daggerheart Item Piles",
   "description": "Adds Daggerheart system support, Coin currency, bundled prices, and a homebrew price registry for Item Piles.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "manifest": "https://raw.githubusercontent.com/SamCharette/daggerheart-item-piles/main/module.json",
-  "download": "https://github.com/SamCharette/daggerheart-item-piles/releases/download/v0.3.0/daggerheart-item-piles-0.3.0.zip",
+  "download": "https://github.com/SamCharette/daggerheart-item-piles/releases/download/v0.3.1/daggerheart-item-piles-0.3.1.zip",
   "compatibility": {
     "minimum": "14",
     "verified": "14"

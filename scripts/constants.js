@@ -6,7 +6,7 @@ export const SOURCE_UUID_FLAG_PATH = `flags.${MODULE_ID}.sourceUuid`;
 
 export const ITEM_QUANTITY_PATH = "system.quantity";
 export const STACKING_SIMILARITIES = ["name", "type"];
-export const UNSTACKABLE_TYPES = ["armor", "weapon"];
+export const UNSTACKABLE_TYPES = [];
 export const ITEM_FILTERS = [];
 
 export const SUPPORTED_ITEM_TYPES = new Set(["armor", "weapon", "consumable", "loot"]);
