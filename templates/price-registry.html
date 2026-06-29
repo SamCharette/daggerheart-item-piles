@@ -1,0 +1,165 @@
+<form class="daggerheart-item-piles-price-registry">
+  <style>
+    .daggerheart-item-piles-price-registry {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .daggerheart-item-piles-price-registry .dhp-notes {
+      color: var(--color-text-light-6);
+      font-size: 0.85em;
+      margin: 0;
+    }
+
+    .daggerheart-item-piles-price-registry .drop-zone {
+      border: 1px dashed var(--color-border-light-tertiary);
+      display: grid;
+      min-height: 3.25rem;
+      place-items: center;
+      text-align: center;
+    }
+
+    .daggerheart-item-piles-price-registry .toolbar {
+      align-items: center;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .daggerheart-item-piles-price-registry .toolbar input.price-search {
+      flex: 1 1 auto;
+      min-width: 12rem;
+      width: auto;
+    }
+
+    .daggerheart-item-piles-price-registry .toolbar button.clear-search {
+      flex: 0 0 2.25rem;
+      min-width: 2.25rem;
+      padding-left: 0;
+      padding-right: 0;
+      width: 2.25rem;
+    }
+
+    .daggerheart-item-piles-price-registry .registry-table-wrap {
+      border: 1px solid var(--color-border-light-tertiary);
+      flex: 1 1 auto;
+      min-height: 18rem;
+      overflow: auto;
+    }
+
+    .daggerheart-item-piles-price-registry table {
+      margin: 0;
+      width: 100%;
+    }
+
+    .daggerheart-item-piles-price-registry th {
+      background: var(--color-bg);
+      position: sticky;
+      text-align: left;
+      top: 0;
+      z-index: 1;
+    }
+
+    .daggerheart-item-piles-price-registry td,
+    .daggerheart-item-piles-price-registry th {
+      padding: 0.35rem 0.5rem;
+      vertical-align: top;
+    }
+
+    .daggerheart-item-piles-price-registry .source-cell {
+      max-width: 22rem;
+      overflow-wrap: anywhere;
+    }
+
+    .daggerheart-item-piles-price-registry .price-cell {
+      width: 7rem;
+    }
+
+    .daggerheart-item-piles-price-registry .quantity-cell {
+      width: 6rem;
+    }
+
+    .daggerheart-item-piles-price-registry input[type="number"] {
+      width: 100%;
+    }
+
+    .daggerheart-item-piles-price-registry .icon-cell {
+      text-align: center;
+      width: 2.5rem;
+    }
+
+    .daggerheart-item-piles-price-registry footer {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+  </style>
+
+  <p class="dhp-notes">
+    Showing <span data-visible-count>{{entryCount}}</span> of {{entryCount}} registered items. Drag items here from the item directory or any compendium; prices are stored in this world, not on source items.
+  </p>
+
+  <div class="drop-zone" data-drop-zone>
+    <span>Drop items here to add them to the price registry.</span>
+  </div>
+
+  <div class="toolbar">
+    <input class="price-search" type="search" name="search" placeholder="Search registered items">
+    <button class="clear-search" type="button" data-action="clear-search" title="Clear search"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div class="registry-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Source</th>
+          <th>Price</th>
+          <th>Qty</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each entries}}
+          <tr data-search="{{search}}">
+            <td>
+              <strong>{{name}}</strong>
+              <div class="dhp-notes">{{type}}</div>
+            </td>
+            <td class="source-cell">
+              <div>{{uuid}}</div>
+              {{#unless uuid}}
+                <div>{{fallbackKey}}</div>
+              {{/unless}}
+            </td>
+            <td class="price-cell">
+              <input type="number" name="price--{{encodedKey}}" value="{{price}}" min="0" step="1" placeholder="Coin">
+            </td>
+            <td class="quantity-cell">
+              <input type="number" name="quantity--{{encodedKey}}" value="{{quantity}}" min="1" step="1">
+            </td>
+            <td class="icon-cell">
+              <button type="button" data-action="remove-entry" data-key="{{encodedKey}}" title="Remove"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        {{/each}}
+        {{#unless entries.length}}
+          <tr>
+            <td colspan="5">No registered items yet. Drop an item above to add one.</td>
+          </tr>
+        {{/unless}}
+        {{#if entries.length}}
+          <tr data-filter-empty style="display: none;">
+            <td colspan="5">No registered items match the current search.</td>
+          </tr>
+        {{/if}}
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <button type="submit"><i class="fas fa-save"></i> Save Registry</button>
+  </footer>
+</form>

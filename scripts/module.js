@@ -1,6 +1,7 @@
 import {
-  BLOCKED_ITEM_TYPES,
-  MODULE_ID
+  ITEM_QUANTITY_PATH,
+  MODULE_ID,
+  PRICE_REGISTRY_SETTING
 } from "./constants.js";
 import {
   ensureItemPilesWorldSettings,
@@ -8,12 +9,20 @@ import {
   warmPriceIndex
 } from "./item-piles-integration.js";
 import {
+  getBundledItemPriceSync,
   getDefaultPriceEntries,
-  getItemPriceSync,
   getPriceOverrides,
   normalizeItemName,
   setPriceOverrides
 } from "./price-index.js";
+import {
+  applyRegistryDataToItemData,
+  createRegistryEntryFromItem,
+  deletePriceRegistryEntry,
+  findPriceRegistryEntry,
+  getPriceRegistryEntries,
+  upsertPriceRegistryEntry
+} from "./price-registry.js";
 
 Hooks.once("init", () => {
   registerModuleSettings();
@@ -34,19 +43,19 @@ Hooks.once("ready", async () => {
   await ensureItemPilesWorldSettings();
 
   globalThis.daggerheartItemPiles ??= {};
+  globalThis.daggerheartItemPiles.openPriceRegistry = () => new PriceRegistryForm().render(true);
   globalThis.daggerheartItemPiles.openPriceEditor = openItemPriceEditor;
 });
 
-Hooks.on("preCreateItem", (item) => {
+Hooks.on("item-piles-preDropItem", (_source, _target, _position, itemData) => {
   if (game.system.id !== "daggerheart") return;
+  applyRegistryDataToItemData(itemData?.item);
+  if (itemData?.item) itemData.quantity = foundry.utils.getProperty(itemData.item, ITEM_QUANTITY_PATH) ?? itemData.quantity;
+});
 
-  const price = getItemPriceSync(item);
-  if (!Number.isFinite(price)) return;
-
-  item.updateSource({
-    "flags.daggerheart-item-piles.price": price,
-    "flags.daggerheart-item-piles.priceSource": "daggerheart-item-piles-price-data"
-  });
+Hooks.on("item-piles-preAddItems", (_targetActor, itemsToCreate) => {
+  if (game.system.id !== "daggerheart") return;
+  for (const itemData of itemsToCreate ?? []) applyRegistryDataToItemData(itemData);
 });
 
 async function waitForItemPilesAPI() {
@@ -68,12 +77,30 @@ function registerModuleSettings() {
     default: {}
   });
 
+  game.settings.register(MODULE_ID, PRICE_REGISTRY_SETTING, {
+    name: "Item Price Registry",
+    hint: "GM-curated Item Piles prices keyed by item source UUID. Use the Item Price Registry instead of editing this directly.",
+    scope: "world",
+    config: false,
+    type: Object,
+    default: { version: 1, entries: {} }
+  });
+
   game.settings.registerMenu(MODULE_ID, "priceManager", {
     name: "Price Manager",
     label: "Open Price Manager",
     hint: "Review and override bundled Daggerheart item prices used by Item Piles merchants.",
     icon: "fas fa-tags",
     type: PriceManagerForm,
+    restricted: true
+  });
+
+  game.settings.registerMenu(MODULE_ID, "priceRegistry", {
+    name: "Item Price Registry",
+    label: "Open Registry",
+    hint: "Drag items from the item directory or compendiums, then set Item Piles prices and default vendor quantities without modifying source items.",
+    icon: "fas fa-list-check",
+    type: PriceRegistryForm,
     restricted: true
   });
 }
@@ -107,8 +134,7 @@ function registerItemSheetPriceEditor() {
 function canEditItemPilesPrice(item) {
   return game.system.id === "daggerheart"
     && item instanceof Item
-    && item.isOwner
-    && !BLOCKED_ITEM_TYPES.includes(item.type);
+    && item.isOwner;
 }
 
 function openItemPriceEditor(item) {
@@ -269,6 +295,117 @@ class PriceManagerForm extends FormApplication {
   }
 }
 
+class PriceRegistryForm extends FormApplication {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: "daggerheart-item-piles-price-registry",
+      title: "Daggerheart Item Piles Price Registry",
+      template: "modules/daggerheart-item-piles/templates/price-registry.html",
+      width: 860,
+      height: 720,
+      resizable: true,
+      closeOnSubmit: false,
+      submitOnChange: false
+    });
+  }
+
+  get entries() {
+    return getPriceRegistryEntries().map((entry) => ({
+      ...entry,
+      encodedKey: encodeURIComponent(entry.key),
+      price: Number.isFinite(Number(entry.price)) ? Number(entry.price) : "",
+      quantity: Number.isFinite(Number(entry.quantity)) ? Number(entry.quantity) : 1,
+      search: `${entry.name} ${entry.type} ${entry.uuid} ${entry.fallbackKey}`.toLowerCase()
+    }));
+  }
+
+  getData() {
+    const entries = this.entries;
+    return {
+      entries,
+      entryCount: entries.length
+    };
+  }
+
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    html.find("form.daggerheart-item-piles-price-registry").on("submit", async (event) => {
+      event.preventDefault();
+      const formData = Object.fromEntries(new FormData(event.currentTarget).entries());
+      await this._updateObject(event, formData);
+    });
+
+    html.find("input[name='search']").on("input", (event) => {
+      const search = event.currentTarget.value.trim().toLowerCase();
+      let visibleCount = 0;
+      html.find("tbody tr[data-search]").each((_index, row) => {
+        const isVisible = !search || row.dataset.search.includes(search);
+        row.style.display = isVisible ? "" : "none";
+        if (isVisible) visibleCount += 1;
+      });
+      html.find("[data-visible-count]").text(visibleCount);
+      html.find("[data-filter-empty]").toggle(visibleCount === 0);
+    });
+
+    html.find("[data-action='clear-search']").on("click", () => {
+      html.find("input[name='search']").val("").trigger("input");
+    });
+
+    html.find("[data-action='remove-entry']").on("click", async (event) => {
+      const key = decodeURIComponent(event.currentTarget.dataset.key);
+      await deletePriceRegistryEntry(key);
+      ui.notifications.info("Daggerheart Item Piles: removed registry entry.");
+      this.render(true);
+    });
+
+    const dropZone = html.find("[data-drop-zone]");
+    dropZone.on("dragover", (event) => event.preventDefault());
+    dropZone.on("drop", async (event) => {
+      event.preventDefault();
+      await this._updateObject(event, Object.fromEntries(new FormData(html[0]).entries()));
+
+      const data = getDropData(event.originalEvent ?? event);
+      if (!data) return;
+
+      const item = await Item.implementation.fromDropData(data);
+      if (!(item instanceof Item)) {
+        ui.notifications.warn("Daggerheart Item Piles: only Item documents can be added to the registry.");
+        return;
+      }
+
+      const existing = findPriceRegistryEntry(item);
+      const entry = createRegistryEntryFromItem(item, existing ?? {});
+      if (!entry) {
+        ui.notifications.warn("Daggerheart Item Piles: could not identify that item.");
+        return;
+      }
+
+      await upsertPriceRegistryEntry(entry);
+      ui.notifications.info(`Daggerheart Item Piles: added ${entry.name} to the price registry.`);
+      this.render(true);
+    });
+  }
+
+  async _updateObject(_event, formData) {
+    const entries = getPriceRegistryEntries();
+
+    for (const entry of entries) {
+      const encodedKey = encodeURIComponent(entry.key);
+      const price = formData[`price--${encodedKey}`];
+      const quantity = formData[`quantity--${encodedKey}`];
+      await upsertPriceRegistryEntry({
+        ...entry,
+        price,
+        quantity
+      });
+    }
+
+    ui.notifications.info(`Daggerheart Item Piles: saved ${entries.length} registry entr${entries.length === 1 ? "y" : "ies"}.`);
+    this.render(true);
+  }
+}
+
 class ItemPriceForm extends FormApplication {
   constructor(item, options = {}) {
     super(item, options);
@@ -288,17 +425,21 @@ class ItemPriceForm extends FormApplication {
   }
 
   getData() {
-    const explicitPrice = this.item.getFlag(MODULE_ID, "price");
+    const entry = findPriceRegistryEntry(this.item);
+    const draftEntry = createRegistryEntryFromItem(this.item, entry ?? {});
     const defaultPrice = getDefaultItemPrice(this.item);
-    const currentPrice = Number.isFinite(Number(explicitPrice)) ? Number(explicitPrice) : "";
+    const currentPrice = Number.isFinite(Number(entry?.price)) ? Number(entry.price) : "";
+    const quantity = Number.isFinite(Number(entry?.quantity)) ? Number(entry.quantity) : 1;
 
     return {
       itemName: this.item.name,
       itemType: this.item.type,
+      itemKey: draftEntry?.key ?? "",
+      itemUuid: draftEntry?.uuid ?? "",
       price: currentPrice,
+      quantity,
       defaultPrice: Number.isFinite(defaultPrice) ? defaultPrice : "",
-      hasDefaultPrice: Number.isFinite(defaultPrice),
-      source: this.item.getFlag(MODULE_ID, "priceSource") ?? ""
+      hasDefaultPrice: Number.isFinite(defaultPrice)
     };
   }
 
@@ -306,39 +447,45 @@ class ItemPriceForm extends FormApplication {
     super.activateListeners(html);
 
     html.find("[data-action='clear-price']").on("click", async () => {
-      await this.item.unsetFlag(MODULE_ID, "price");
-      await this.item.unsetFlag(MODULE_ID, "priceSource");
-      ui.notifications.info(`Daggerheart Item Piles: cleared ${this.item.name} price.`);
+      const entry = createRegistryEntryFromItem(this.item);
+      if (entry) await deletePriceRegistryEntry(entry.key);
+      ui.notifications.info(`Daggerheart Item Piles: removed ${this.item.name} from the price registry.`);
       this.close();
     });
   }
 
   async _updateObject(_event, formData) {
-    const value = formData.price;
-    if (value === "" || value === null || value === undefined) {
-      await this.item.unsetFlag(MODULE_ID, "price");
-      await this.item.unsetFlag(MODULE_ID, "priceSource");
-      ui.notifications.info(`Daggerheart Item Piles: cleared ${this.item.name} price.`);
+    const entry = createRegistryEntryFromItem(this.item, {
+      price: formData.price,
+      quantity: formData.quantity
+    });
+
+    if (!entry) {
+      ui.notifications.warn("Daggerheart Item Piles: could not identify that item.");
       return;
     }
 
-    const price = Number(value);
-    if (!Number.isFinite(price) || price < 0) {
+    if (formData.price !== "" && entry.price === null) {
       ui.notifications.warn("Daggerheart Item Piles: enter a price of 0 or higher.");
       return;
     }
 
-    await this.item.setFlag(MODULE_ID, "price", price);
-    await this.item.setFlag(MODULE_ID, "priceSource", "manual");
-    ui.notifications.info(`Daggerheart Item Piles: set ${this.item.name} to ${price} gp.`);
+    await upsertPriceRegistryEntry(entry);
+    const priceText = entry.price === null ? "no price" : `${entry.price} Coin`;
+    ui.notifications.info(`Daggerheart Item Piles: registered ${this.item.name} with ${priceText}.`);
   }
 }
 
 function getDefaultItemPrice(item) {
-  const explicitPrice = item.getFlag(MODULE_ID, "price");
-  if (Number.isFinite(Number(explicitPrice))) {
-    return globalThis.daggerheartItemPiles?.priceIndex?.get(normalizeItemName(item.name));
-  }
+  return getBundledItemPriceSync(item);
+}
 
-  return getItemPriceSync(item);
+function getDropData(event) {
+  const raw = event.dataTransfer?.getData("text/plain");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (_error) {
+    return null;
+  }
 }

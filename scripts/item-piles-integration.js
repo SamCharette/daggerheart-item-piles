@@ -6,7 +6,7 @@ import {
   STACKING_SIMILARITIES,
   UNSTACKABLE_TYPES
 } from "./constants.js";
-import { getItemPrice } from "./price-index.js";
+import { getItemPriceSync } from "./price-index.js";
 
 export function registerItemPilesIntegration() {
   const api = game.itempiles?.API;
@@ -27,7 +27,7 @@ export function registerItemPilesIntegration() {
     ITEM_SIMILARITIES: STACKING_SIMILARITIES,
     UNSTACKABLE_ITEM_TYPES: UNSTACKABLE_TYPES,
     CURRENCIES: COIN_CURRENCIES,
-    CURRENCY_DECIMAL_DIGITS: 0.01,
+    CURRENCY_DECIMAL_DIGITS: 0,
     ITEM_COST_TRANSFORMER: itemCostTransformer,
     PILE_DEFAULTS: {
       shareCurrenciesEnabled: true,
@@ -73,7 +73,7 @@ export async function ensureItemPilesWorldSettings() {
 
   if (!sameFilters(api.ITEM_FILTERS, ITEM_FILTERS)) {
     await api.setItemFilters(ITEM_FILTERS);
-    changes.push("blocked item types");
+    changes.push("item filters");
   }
 
   if (changes.length) {
@@ -82,22 +82,7 @@ export async function ensureItemPilesWorldSettings() {
 }
 
 function itemCostTransformer(item) {
-  const itemData = item instanceof Item ? item.toObject() : item;
-  const explicitPrice = foundry.utils.getProperty(itemData, PRICE_FLAG_PATH);
-  if (Number.isFinite(Number(explicitPrice))) return Number(explicitPrice);
-
-  const index = globalThis.daggerheartItemPiles?.priceIndex;
-  if (!index) return false;
-
-  const normalizedName = String(itemData?.name ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[’']/g, "'")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-
-  return index.get(normalizedName) ?? false;
+  return getItemPriceSync(item);
 }
 
 function sameCurrencySet(left, right) {

@@ -5,11 +5,11 @@ Foundry VTT module that adds Daggerheart support for Item Piles.
 ## What It Does
 
 - Registers Daggerheart item quantity support for Item Piles.
-- Adds D&D-style coin currencies: gp, sp, cp, and pp.
+- Adds a Daggerheart-style Coin item currency.
 - Uses bundled Daggerheart item prices for Item Piles merchants.
 - Adds a GM-only Price Manager with search, type filters, tier filters, and world-specific price overrides.
-- Adds an Item Piles Price button to Daggerheart item sheets so homebrew items can be priced after normal drag-and-drop workflows.
-- Blocks character-build items, such as ancestry, class, subclass, domain cards, and features, from player sell lists.
+- Adds a GM-only Item Price Registry for drag-and-drop homebrew pricing without modifying source items.
+- Adds an Item Piles Price button to Daggerheart item sheets that updates the registry entry for that item source.
 
 ## Requirements
 
@@ -59,13 +59,24 @@ Blank overrides use the bundled default price. World overrides should survive mo
 
 ## Pricing Homebrew Items
 
-For custom world or compendium items:
+Homebrew prices are stored in a world-level module registry, not on the source item or compendium entry.
+
+To register items from the settings menu:
+
+1. Open Configure Settings.
+2. Open Module Settings.
+3. Find Daggerheart Item Piles.
+4. Click Open Registry.
+5. Drag items from the item directory or any compendium into the registry.
+6. Enter price and default vendor quantity, then save.
+
+To register a single item from its sheet:
 
 1. Open the item sheet.
 2. Click the tag icon in the sheet header.
-3. Enter the Item Piles value in gp and save.
+3. Enter the Item Piles value and default vendor quantity, then save.
 
-The value is stored on the item at `flags.daggerheart-item-piles.price`. Items dragged into Item Piles from the item directory, custom compendiums, or rolltable results should carry that value with them.
+Registry entries are keyed by source UUID when Foundry exposes one, with a name/type fallback. Items dragged into Item Piles from the item directory, custom compendiums, or rolltable results should use the registry price and quantity when their source can be resolved. Item Piles still applies vendor buy/sell modifiers to the base registry price.
 
 ## Building A Handoff Zip
 

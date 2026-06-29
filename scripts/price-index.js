@@ -3,10 +3,9 @@ import {
   MODULE_ID,
   PRICE_FLAG_PATH,
   PRICE_OVERRIDES_SETTING,
-  PRICE_SOURCE,
-  PRICE_SOURCE_FLAG_PATH,
   SUPPORTED_ITEM_TYPES
 } from "./constants.js";
+import { getRegistryItemPrice } from "./price-registry.js";
 
 let priceIndexPromise = null;
 
@@ -22,10 +21,18 @@ export async function getItemPrice(item) {
 
 export function getItemPriceSync(item) {
   const itemData = item instanceof Item ? item.toObject() : item;
-  if (!SUPPORTED_ITEM_TYPES.has(itemData?.type)) return false;
-
   const explicitPrice = foundry.utils.getProperty(itemData, PRICE_FLAG_PATH);
   if (Number.isFinite(Number(explicitPrice))) return Number(explicitPrice);
+
+  const registryPrice = getRegistryItemPrice(item);
+  if (Number.isFinite(Number(registryPrice))) return Number(registryPrice);
+
+  return getBundledItemPriceSync(itemData);
+}
+
+export function getBundledItemPriceSync(item) {
+  const itemData = item instanceof Item ? item.toObject() : item;
+  if (!SUPPORTED_ITEM_TYPES.has(itemData?.type)) return false;
 
   const index = globalThis.daggerheartItemPiles?.priceIndex;
   return index?.get(normalizeItemName(itemData?.name)) ?? false;
@@ -78,81 +85,6 @@ export async function refreshPriceIndex() {
   priceIndexPromise = null;
   globalThis.daggerheartItemPiles ??= {};
   globalThis.daggerheartItemPiles.priceIndex = await getPriceIndex();
-}
-
-export async function seedWorldItemPrices() {
-  if (!game.user.isGM) return { actorItemsUpdated: 0, worldItemsUpdated: 0, matched: 0, skipped: 0 };
-
-  const index = await getPriceIndex();
-  const worldItemUpdates = [];
-  const actorItemUpdates = new Map();
-  let matched = 0;
-  let skipped = 0;
-
-  for (const item of game.items) {
-    if (!SUPPORTED_ITEM_TYPES.has(item.type)) {
-      skipped += 1;
-      continue;
-    }
-
-    const existingPrice = item.getFlag("daggerheart-item-piles", "price");
-    if (Number.isFinite(Number(existingPrice))) {
-      skipped += 1;
-      continue;
-    }
-
-    const price = index.get(normalizeItemName(item.name));
-    if (!Number.isFinite(price)) {
-      skipped += 1;
-      continue;
-    }
-
-    matched += 1;
-    worldItemUpdates.push({
-      _id: item.id,
-      [PRICE_FLAG_PATH]: price,
-      [PRICE_SOURCE_FLAG_PATH]: PRICE_SOURCE
-    });
-  }
-
-  for (const actor of game.actors) {
-    const updates = [];
-    for (const item of actor.items) {
-      if (!SUPPORTED_ITEM_TYPES.has(item.type)) {
-        skipped += 1;
-        continue;
-      }
-
-      const existingPrice = item.getFlag("daggerheart-item-piles", "price");
-      if (Number.isFinite(Number(existingPrice))) {
-        skipped += 1;
-        continue;
-      }
-
-      const price = index.get(normalizeItemName(item.name));
-      if (!Number.isFinite(price)) {
-        skipped += 1;
-        continue;
-      }
-
-      matched += 1;
-      updates.push({
-        _id: item.id,
-        [PRICE_FLAG_PATH]: price,
-        [PRICE_SOURCE_FLAG_PATH]: PRICE_SOURCE
-      });
-    }
-
-    if (updates.length) actorItemUpdates.set(actor, updates);
-  }
-
-  if (worldItemUpdates.length) await Item.updateDocuments(worldItemUpdates);
-  for (const [actor, updates] of actorItemUpdates) {
-    await actor.updateEmbeddedDocuments("Item", updates);
-  }
-
-  const actorItemsUpdated = [...actorItemUpdates.values()].reduce((total, updates) => total + updates.length, 0);
-  return { actorItemsUpdated, worldItemsUpdated: worldItemUpdates.length, matched, skipped };
 }
 
 async function buildPriceIndex() {
