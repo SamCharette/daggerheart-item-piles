@@ -2,7 +2,8 @@ import {
   ITEM_QUANTITY_PATH,
   MODULE_ID,
   PRICE_REGISTRY_SETTING,
-  SOURCE_UUID_FLAG_PATH
+  SOURCE_UUID_FLAG_PATH,
+  isCoinCurrencyItem
 } from "./constants.js";
 
 export function getPriceRegistry() {
@@ -34,12 +35,16 @@ export async function deletePriceRegistryEntry(key) {
 }
 
 export function getRegistryItemPrice(item) {
+  if (isCoinCurrencyItem(item)) return false;
+
   const entry = findPriceRegistryEntry(item);
   const price = Number(entry?.price);
   return Number.isFinite(price) ? price : false;
 }
 
 export function findPriceRegistryEntry(item) {
+  if (isCoinCurrencyItem(item)) return null;
+
   const registry = getPriceRegistry();
   const identity = getItemRegistryIdentity(item);
 
@@ -59,6 +64,8 @@ export function findPriceRegistryEntry(item) {
 
 export function createRegistryEntryFromItem(item, overrides = {}) {
   const itemData = item instanceof Item ? item.toObject() : item;
+  if (isCoinCurrencyItem(itemData)) return null;
+
   const identity = getItemRegistryIdentity(item);
   const key = identity.primaryKey;
   if (!key) return null;

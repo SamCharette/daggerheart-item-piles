@@ -3,7 +3,8 @@ import {
   MODULE_ID,
   PRICE_FLAG_PATH,
   PRICE_OVERRIDES_SETTING,
-  SUPPORTED_ITEM_TYPES
+  SUPPORTED_ITEM_TYPES,
+  isCoinCurrencyItem
 } from "./constants.js";
 import { getRegistryItemPrice } from "./price-registry.js";
 
@@ -21,6 +22,8 @@ export async function getItemPrice(item) {
 
 export function getItemPriceSync(item) {
   const itemData = item instanceof Item ? item.toObject() : item;
+  if (isCoinCurrencyItem(itemData)) return false;
+
   const explicitPrice = foundry.utils.getProperty(itemData, PRICE_FLAG_PATH);
   if (Number.isFinite(Number(explicitPrice))) return Number(explicitPrice);
 

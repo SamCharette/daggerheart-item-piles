@@ -1,7 +1,8 @@
 import {
   ITEM_QUANTITY_PATH,
   MODULE_ID,
-  PRICE_REGISTRY_SETTING
+  PRICE_REGISTRY_SETTING,
+  isCoinCurrencyItem
 } from "./constants.js";
 import {
   ensureItemPilesWorldSettings,
@@ -49,13 +50,22 @@ Hooks.once("ready", async () => {
 
 Hooks.on("item-piles-preDropItem", (_source, _target, _position, itemData) => {
   if (game.system.id !== "daggerheart") return;
+  if (isCoinCurrencyItem(itemData?.item)) return false;
+
   applyRegistryDataToItemData(itemData?.item);
   if (itemData?.item) itemData.quantity = foundry.utils.getProperty(itemData.item, ITEM_QUANTITY_PATH) ?? itemData.quantity;
 });
 
 Hooks.on("item-piles-preAddItems", (_targetActor, itemsToCreate) => {
   if (game.system.id !== "daggerheart") return;
-  for (const itemData of itemsToCreate ?? []) applyRegistryDataToItemData(itemData);
+  for (let index = (itemsToCreate?.length ?? 0) - 1; index >= 0; index -= 1) {
+    const itemData = itemsToCreate[index];
+    if (isCoinCurrencyItem(itemData)) {
+      itemsToCreate.splice(index, 1);
+      continue;
+    }
+    applyRegistryDataToItemData(itemData);
+  }
 });
 
 async function waitForItemPilesAPI() {
@@ -134,7 +144,8 @@ function registerItemSheetPriceEditor() {
 function canEditItemPilesPrice(item) {
   return game.system.id === "daggerheart"
     && item instanceof Item
-    && item.isOwner;
+    && item.isOwner
+    && !isCoinCurrencyItem(item);
 }
 
 function openItemPriceEditor(item) {
@@ -371,6 +382,11 @@ class PriceRegistryForm extends FormApplication {
       const item = await Item.implementation.fromDropData(data);
       if (!(item instanceof Item)) {
         ui.notifications.warn("Daggerheart Item Piles: only Item documents can be added to the registry.");
+        return;
+      }
+
+      if (isCoinCurrencyItem(item)) {
+        ui.notifications.warn("Daggerheart Item Piles: Coin is sheet currency and cannot be registered as a tradable item.");
         return;
       }
 

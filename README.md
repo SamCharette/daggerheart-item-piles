@@ -6,6 +6,7 @@ Foundry VTT module that adds Daggerheart support for Item Piles.
 
 - Registers Daggerheart item quantity support for Item Piles.
 - Uses the Daggerheart character sheet's Coin field as the Item Piles primary currency.
+- Blocks Coin items from Item Piles buying, selling, pricing, and registry workflows.
 - Uses bundled Daggerheart item prices for Item Piles merchants.
 - Prompts for quantity when Item Piles tries to buy an entire merchant stack, defaulting to one item.
 - Adds a GM-only Price Manager with search, type filters, tier filters, and world-specific price overrides.

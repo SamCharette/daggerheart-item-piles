@@ -4,7 +4,8 @@ import {
   ITEM_QUANTITY_PATH,
   PRICE_FLAG_PATH,
   STACKING_SIMILARITIES,
-  UNSTACKABLE_TYPES
+  UNSTACKABLE_TYPES,
+  isCoinCurrencyItem
 } from "./constants.js";
 import { getItemPriceSync } from "./price-index.js";
 
@@ -93,9 +94,11 @@ function installTradeQuantityGuard(api) {
   const originalTradeItems = api.tradeItems.bind(api);
   const guardedTradeItems = async (seller, buyer, items, options) => {
     const sellerActor = normalizeActor(seller);
+    items = filterTradeCurrencyItems(items ?? [], sellerActor);
+    if (!items.length) return false;
 
     if (sellerActor && api.isItemPileMerchant?.(sellerActor)) {
-      items = await promptForDefaultStackQuantities(items ?? [], sellerActor);
+      items = await promptForDefaultStackQuantities(items, sellerActor);
       if (!items) return false;
     }
 
@@ -105,6 +108,13 @@ function installTradeQuantityGuard(api) {
   guardedTradeItems.daggerheartItemPilesGuarded = true;
   guardedTradeItems.daggerheartItemPilesOriginal = originalTradeItems;
   api.tradeItems = guardedTradeItems;
+}
+
+function filterTradeCurrencyItems(entries, sellerActor) {
+  return (entries ?? []).filter((entry) => {
+    const item = resolveActorItem(entry?.item, sellerActor);
+    return !item || !isCoinCurrencyItem(item);
+  });
 }
 
 async function promptForDefaultStackQuantities(entries, sellerActor) {
