@@ -91,11 +91,12 @@ function installTradeQuantityGuard(api) {
   if (api.tradeItems?.daggerheartItemPilesGuarded) return;
 
   const originalTradeItems = api.tradeItems.bind(api);
-  const guardedTradeItems = (seller, buyer, items, options) => {
+  const guardedTradeItems = async (seller, buyer, items, options) => {
     const sellerActor = normalizeActor(seller);
 
     if (sellerActor && api.isItemPileMerchant?.(sellerActor)) {
-      items = (items ?? []).map((entry) => clampDefaultStackQuantity(entry, sellerActor));
+      items = await promptForDefaultStackQuantities(items ?? [], sellerActor);
+      if (!items) return false;
     }
 
     return originalTradeItems(seller, buyer, items, options);
@@ -106,7 +107,19 @@ function installTradeQuantityGuard(api) {
   api.tradeItems = guardedTradeItems;
 }
 
-function clampDefaultStackQuantity(entry, sellerActor) {
+async function promptForDefaultStackQuantities(entries, sellerActor) {
+  const promptedEntries = [];
+
+  for (const entry of entries) {
+    const promptedEntry = await promptForDefaultStackQuantity(entry, sellerActor);
+    if (!promptedEntry) return null;
+    promptedEntries.push(promptedEntry);
+  }
+
+  return promptedEntries;
+}
+
+async function promptForDefaultStackQuantity(entry, sellerActor) {
   const data = { ...entry };
   const item = resolveActorItem(data.item, sellerActor);
   if (!item) return data;
@@ -116,10 +129,52 @@ function clampDefaultStackQuantity(entry, sellerActor) {
   const requestedQuantity = Number(data.quantity);
 
   if (Number.isFinite(itemQuantity) && itemQuantity > 1 && requestedQuantity === itemQuantity) {
-    data.quantity = 1;
+    const quantity = await promptPurchaseQuantity(itemData, itemQuantity);
+    if (!quantity) return null;
+    data.quantity = quantity;
   }
 
   return data;
+}
+
+async function promptPurchaseQuantity(itemData, maxQuantity) {
+  const itemName = escapeHtml(itemData?.name ?? "Item");
+  const content = `
+    <form class="daggerheart-item-piles-quantity-prompt">
+      <p>Select how many <strong>${itemName}</strong> to buy.</p>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" name="quantity" value="1" min="1" max="${maxQuantity}" step="1" autofocus>
+      </div>
+    </form>
+  `;
+
+  const formData = await foundry.applications.api.DialogV2.input({
+    window: {
+      icon: "fa-solid fa-cart-shopping",
+      title: "Choose Purchase Quantity"
+    },
+    position: { width: 360 },
+    content,
+    ok: {
+      label: "Buy",
+      icon: "fa-solid fa-cart-shopping"
+    },
+    rejectClose: false
+  });
+
+  const quantity = Number(formData?.quantity);
+  if (!Number.isFinite(quantity)) return null;
+  return Math.max(1, Math.min(maxQuantity, Math.floor(quantity)));
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function normalizeActor(target) {
