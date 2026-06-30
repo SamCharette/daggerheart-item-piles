@@ -36,6 +36,8 @@ export function registerItemPilesIntegration() {
       displayItemTypes: true
     }
   });
+
+  installTradeQuantityGuard(api);
 }
 
 export async function ensureItemPilesWorldSettings() {
@@ -85,6 +87,73 @@ function itemCostTransformer(item) {
   return getItemPriceSync(item);
 }
 
+function installTradeQuantityGuard(api) {
+  if (api.tradeItems?.daggerheartItemPilesGuarded) return;
+
+  const originalTradeItems = api.tradeItems.bind(api);
+  const guardedTradeItems = (seller, buyer, items, options) => {
+    const sellerActor = normalizeActor(seller);
+
+    if (sellerActor && api.isItemPileMerchant?.(sellerActor)) {
+      items = (items ?? []).map((entry) => clampDefaultStackQuantity(entry, sellerActor));
+    }
+
+    return originalTradeItems(seller, buyer, items, options);
+  };
+
+  guardedTradeItems.daggerheartItemPilesGuarded = true;
+  guardedTradeItems.daggerheartItemPilesOriginal = originalTradeItems;
+  api.tradeItems = guardedTradeItems;
+}
+
+function clampDefaultStackQuantity(entry, sellerActor) {
+  const data = { ...entry };
+  const item = resolveActorItem(data.item, sellerActor);
+  if (!item) return data;
+
+  const itemData = item instanceof Item ? item.toObject() : item;
+  const itemQuantity = Number(foundry.utils.getProperty(itemData, ITEM_QUANTITY_PATH));
+  const requestedQuantity = Number(data.quantity);
+
+  if (Number.isFinite(itemQuantity) && itemQuantity > 1 && requestedQuantity === itemQuantity) {
+    data.quantity = 1;
+  }
+
+  return data;
+}
+
+function normalizeActor(target) {
+  if (target instanceof Actor) return target;
+  if (target?.actor instanceof Actor) return target.actor;
+
+  const uuid = typeof target === "string" ? target : target?.uuid;
+  return resolveUuidSync(uuid)
+    ?? (typeof target === "string" ? game.actors.get(target) : null)
+    ?? null;
+}
+
+function resolveActorItem(itemReference, actor) {
+  if (itemReference instanceof Item) return itemReference;
+  if (!actor?.items) return null;
+
+  if (typeof itemReference === "string") {
+    return actor.items.get(itemReference) ?? actor.items.getName(itemReference) ?? null;
+  }
+
+  return actor.items.get(itemReference?._id ?? itemReference?.id)
+    ?? actor.items.getName(itemReference?.name)
+    ?? null;
+}
+
+function resolveUuidSync(uuid) {
+  if (!uuid) return null;
+  try {
+    return fromUuidSync(uuid);
+  } catch (_error) {
+    return null;
+  }
+}
+
 function sameCurrencySet(left, right) {
   return JSON.stringify(simplifyCurrencies(left)) === JSON.stringify(simplifyCurrencies(right));
 }
@@ -95,6 +164,7 @@ function simplifyCurrencies(currencies) {
     abbreviation: currency.abbreviation,
     exchangeRate: currency.exchangeRate,
     primary: currency.primary,
+    path: currency.data?.path,
     type: currency.type,
     itemName: currency.data?.item?.name
   }));
